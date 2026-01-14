@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"time"
 
 	Models "github.com/vitaly06/sales-rest-api/Models"
@@ -58,9 +59,53 @@ func DeleteCashier(c *fiber.Ctx) error {
 }
 
 func CashiersList(c *fiber.Ctx) error {
-	return c.SendString("cashiers list")
+	var cashier []Models.Cashier
+
+	limit := c.QueryInt("limit")
+	skip := c.QueryInt("skip")
+
+	var count int64
+
+	db.DB.Select("*").Limit(limit).Offset(skip).Find(&cashier).Count(&count)
+
+	return c.Status(200).JSON(fiber.Map{
+		"success": true,
+		"message": "Cashier list api",
+		"data":    cashier,
+	})
 }
 
 func GetCashierDetails(c *fiber.Ctx) error {
-	return nil
+	cashierId, err := c.ParamsInt("cashierId")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"message": "Cashier id must be a number",
+		})
+	}
+
+	var cashier Models.Cashier
+
+	db.DB.Select("id,name,created_at,updated_at").Where("id=?", cashierId).First(&cashier)
+
+	if cashier.Id == 0 {
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"message": "Cashier not found",
+		})
+	}
+
+	cashierData := make(map[string]interface{})
+	cashierData["id"] = cashier.Id
+	cashierData["name"] = cashier.Name
+	cashierData["createdAt"] = cashier.CreatedAt
+	cashierData["updatedAt"] = cashier.UpdatedAt
+
+	fmt.Println(cashierData)
+
+	return c.Status(200).JSON(fiber.Map{
+		"success": true,
+		"message": "success",
+		"data":    cashierData,
+	})
 }
