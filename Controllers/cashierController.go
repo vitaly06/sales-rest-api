@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -51,11 +52,84 @@ func CreateCashier(c *fiber.Ctx) error {
 }
 
 func UpdateCashier(c *fiber.Ctx) error {
-	return nil
+	cashierId, err := c.ParamsInt("cashierId")
+
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"message": "Cashier id must be a number",
+		})
+	}
+
+	var cashier Models.Cashier
+
+	db.DB.Find(&cashier, "id=?", cashierId)
+
+	if cashier.Id == 0 {
+		return c.Status(404).JSON(fiber.Map{
+			"success": false,
+			"message": "Cashier not found",
+		})
+	}
+
+	var updateData map[string]interface{}
+
+	if err := json.Unmarshal(c.Body(), &updateData); err != nil {
+		fmt.Println("Parse error:", err)
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"message": "Invalid data",
+			"error":   err.Error(),
+		})
+	}
+
+	fmt.Println("Received data:", updateData)
+
+	name, ok := updateData["name"].(string)
+	if !ok || name == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"message": "Cashier name is required",
+		})
+	}
+
+	cashier.Name = name
+	db.DB.Save(&cashier)
+
+	return c.Status(200).JSON(fiber.Map{
+		"success": true,
+		"message": "Cashier updated successfully",
+		"data":    cashier,
+	})
 }
 
 func DeleteCashier(c *fiber.Ctx) error {
-	return nil
+	cashierId, err := c.ParamsInt("cashierId")
+
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"success": false,
+			"message": "cashier id must be a number",
+		})
+	}
+
+	var cashier Models.Cashier
+
+	db.DB.Where("id = ?", cashierId).First(&cashier)
+
+	if cashier.Id == 0 {
+		return c.Status(404).JSON(fiber.Map{
+			"success": false,
+			"message": "cashier not found",
+		})
+	}
+
+	db.DB.Where("id=?", cashierId).Delete(&cashier)
+
+	return c.Status(200).JSON(fiber.Map{
+		"success": true,
+		"message": "cashier deleted successfully",
+	})
 }
 
 func CashiersList(c *fiber.Ctx) error {
